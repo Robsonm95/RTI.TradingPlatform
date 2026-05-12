@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="RTI.OrderAccumulator/RTI.OrderAccumulator.csproj" />
+  <Project Path="RTI.OrderGenerator/RTI.OrderGenerator.csproj" />
+  <Project Path="RTI.Shared/RTI.Shared.csproj" />
+</Solution>
