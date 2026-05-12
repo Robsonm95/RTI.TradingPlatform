@@ -7,10 +7,9 @@ public class FixApplication : MessageCracker, IApplication
 {
     private readonly OrderProcessor _processor;
 
-    public FixApplication()
+    public FixApplication(ExposureService exposureService)
     {
-        _processor = new OrderProcessor(
-            new ExposureService());
+        _processor = new OrderProcessor(exposureService);
     }
 
     public void OnCreate(SessionID sessionID)

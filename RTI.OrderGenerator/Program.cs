@@ -1,9 +1,15 @@
+using System.Text.Json.Serialization;
 using RTI.OrderGenerator.Fix;
 using RTI.OrderGenerator.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
@@ -21,6 +27,9 @@ var tracker =
 var initiator = new FixInitiator(tracker);
 
 initiator.Start();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 if (app.Environment.IsDevelopment())
 {

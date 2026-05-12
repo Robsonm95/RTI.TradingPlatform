@@ -1,12 +1,19 @@
 using QuickFix;
 using QuickFix.Logger;
 using QuickFix.Store;
+using RTI.OrderAccumulator.Services;
 
 namespace RTI.OrderAccumulator.Fix;
 
 public class FixAcceptor
 {
     private ThreadedSocketAcceptor? _acceptor;
+    private readonly ExposureService _exposureService;
+
+    public FixAcceptor(ExposureService exposureService)
+    {
+        _exposureService = exposureService;
+    }
 
     public void Start()
     {
@@ -14,7 +21,7 @@ public class FixAcceptor
             new SessionSettings("Fix/fix.cfg");
 
         IApplication application =
-            new FixApplication();
+            new FixApplication(_exposureService);
 
         IMessageStoreFactory storeFactory =
             new FileStoreFactory(settings);
