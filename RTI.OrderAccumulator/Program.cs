@@ -1,4 +1,7 @@
-﻿using RTI.OrderAccumulator.Fix;
+﻿using Microsoft.EntityFrameworkCore;
+using RTI.OrderAccumulator.Data;
+using RTI.OrderAccumulator.Fix;
+using RTI.OrderAccumulator.Repositories;
 using RTI.OrderAccumulator.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,9 +21,25 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddDbContextFactory<TradingDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("TradingDatabase") ?? "Data Source=orderAccumulator.db";
+    options.UseSqlite(connectionString);
+});
+
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IExposureRepository, ExposureRepository>();
+
 builder.Services.AddSingleton<ExposureService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TradingDbContext>>();
+    using var db = factory.CreateDbContext();
+    db.Database.EnsureCreated();
+}
 
 var exposureService = app.Services.GetRequiredService<ExposureService>();
 

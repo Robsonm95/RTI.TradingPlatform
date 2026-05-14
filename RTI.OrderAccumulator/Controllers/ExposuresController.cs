@@ -16,15 +16,13 @@ public class ExposuresController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult Get()
+    public IActionResult Get([FromQuery] string? tradeDate)
     {
-        var symbols = new[] { "PETR4", "VALE3", "VIIA4" };
-        var exposures = new Dictionary<string, decimal>();
+        var date = string.IsNullOrEmpty(tradeDate)
+            ? DateOnly.FromDateTime(DateTime.UtcNow.Date)
+            : DateOnly.Parse(tradeDate);
 
-        foreach (var symbol in symbols)
-        {
-            exposures[symbol] = _exposureService.GetExposure(symbol);
-        }
+        var exposures = _exposureService.GetExposureAll(date);
 
         return Ok(new ExposureResponse
         {

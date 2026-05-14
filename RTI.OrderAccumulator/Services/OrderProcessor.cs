@@ -16,26 +16,26 @@ public class OrderProcessor
         _exposureService = exposureService;
     }
 
-    public void Process(
+    public async Task ProcessAsync(
         NewOrderSingle order,
         SessionID sessionID)
     {
         var clOrdId =
-            order.ClOrdID.getValue();
+            order.ClOrdID.Value;
 
         var symbol =
-            order.Symbol.getValue();
+            order.Symbol.Value;
 
         var quantity =
-            (decimal)order.OrderQty.getValue();
+            (decimal)order.OrderQty.Value;
 
         var price =
-            order.Price.getValue();
+            order.Price.Value;
 
-        var side =
-            order.Side.getValue() == Side.BUY
-                ? OrderSide.Buy
-                : OrderSide.Sell;
+        var sideValue = order.Side.Value;
+        var side = sideValue == Side.BUY
+            ? OrderSide.Buy
+            : OrderSide.Sell;
 
         var orderValue =
             quantity * price;
@@ -46,42 +46,33 @@ public class OrderProcessor
                 side,
                 orderValue);
 
-        ExecutionReport report;
+        await _exposureService.ApplyOrderAsync(
+            clOrdId,
+            symbol,
+            sideValue,
+            (int)quantity,
+            price,
+            accepted ? "ACCEPTED" : "REJECTED",
+            accepted);
 
-        if (accepted)
-        {
-            _exposureService.ApplyOrder(
+        ExecutionReport report = accepted
+            ? ExecutionReportFactory.CreateAccepted(
+                clOrdId,
                 symbol,
-                side,
-                orderValue);
+                sideValue,
+                quantity,
+                price)
+            : ExecutionReportFactory.CreateRejected(
+                clOrdId,
+                symbol,
+                sideValue,
+                quantity,
+                price,
+                "Exposure limit exceeded");
 
-            report =
-                ExecutionReportFactory
-                    .CreateAccepted(
-                        clOrdId,
-                        symbol,
-                        order.Side.getValue(),
-                        quantity,
-                        price);
-
-            Console.WriteLine(
-                $"ORDER ACCEPTED [{clOrdId}]");
-        }
-        else
-        {
-            report =
-                ExecutionReportFactory
-                    .CreateRejected(
-                        clOrdId,
-                        symbol,
-                        order.Side.getValue(),
-                        quantity,
-                        price,
-                        "Exposure limit exceeded");
-
-            Console.WriteLine(
-                $"ORDER REJECTED [{clOrdId}]");
-        }
+        Console.WriteLine(accepted
+            ? $"ORDER ACCEPTED [{clOrdId}]"
+            : $"ORDER REJECTED [{clOrdId}]");
 
         Session.SendToTarget(report, sessionID);
     }

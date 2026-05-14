@@ -96,6 +96,9 @@
         .exposure-ok {
             color: #5cb85c;
         }
+        .exposure-row:hover {
+            background-color: #f0f8ff;
+        }
         #updateStatus {
             font-size: 0.9rem;
             color: #666;
@@ -137,11 +140,14 @@
         <button type="submit">Enviar ordem</button>
     </form>
 
-    <div id="response">A resposta da requisição aparecerá aqui.</div>
+    <div id="response"></div>
 
     <div id="exposureSection">
         <h2>Exposições Financeiras</h2>
-        <p>Exposições por símbolo (Limite: R$ 100.000.000)</p>
+        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <strong>Data:</strong>
+            <input type="date" id="exposureDate" style="padding: 8px 12px; font-size: 1rem; flex: 0 1 auto;" />
+        </label>
         <table>
             <thead>
                 <tr>
@@ -157,7 +163,31 @@
                 </tr>
             </tbody>
         </table>
+        <p>Exposições por símbolo (Limite: R$ 100.000.000)</p>
         <div id="updateStatus"></div>
+
+        <!-- Orders table (hidden by default) -->
+        <div id="ordersSection" style="display: none; margin-top: 30px; padding: 18px; border: 1px solid #ddd; border-radius: 10px; background: #fafafa;">
+            <h3>Ordens do Símbolo: <span id="ordersSymbol"></span></h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ClOrdId</th>
+                        <th>Lado</th>
+                        <th>Quantidade</th>
+                        <th>Preço</th>
+                        <th>Status</th>
+                        <th>Data/Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">Carregando ordens...</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="ordersStatus" style="font-size: 0.9rem; color: #666; margin-top: 8px;"></div>
+        </div>
     </div>
 
     <script>
@@ -202,11 +232,23 @@
         // Exposures table update
         const exposureTableBody = document.getElementById('exposureTableBody');
         const updateStatus = document.getElementById('updateStatus');
+        const exposureDate = document.getElementById('exposureDate');
         const MAX_EXPOSURE = 100_000_000;
+
+        // Set today's date as default
+        const today = new Date().toISOString().split('T')[0];
+        exposureDate.value = today;
+
+        // Update exposures when date changes
+        exposureDate.addEventListener('change', updateExposures);
 
         async function updateExposures() {
             try {
-                const response = await fetch('http://localhost:5002/exposures', {
+                const selectedDate = exposureDate.value;
+                const url = new URL('http://localhost:5002/exposures');
+                url.searchParams.append('tradeDate', selectedDate);
+
+                const response = await fetch(url.toString(), {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
@@ -228,7 +270,7 @@
                     const statusText = isWarning ? '⚠️ Alto' : '✓ Okay';
 
                     return `
-                        <tr>
+                        <tr data-symbol="${symbol}" style="cursor: pointer;" class="exposure-row">
                             <td>${symbol}</td>
                             <td class="exposure-value">${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                             <td>${percentage.toFixed(2)}%</td>
@@ -249,5 +291,79 @@
 
         // Update every 2 seconds
         setInterval(updateExposures, 2000);
+
+        // Handle exposure row clicks
+        exposureTableBody.addEventListener('click', (event) => {
+            const row = event.target.closest('.exposure-row');
+            if (row) {
+                const symbol = row.getAttribute('data-symbol');
+                if (symbol) {
+                    showOrdersForSymbol(symbol);
+                }
+            }
+        });
+
+        async function showOrdersForSymbol(symbol) {
+            const ordersSection = document.getElementById('ordersSection');
+            const ordersSymbol = document.getElementById('ordersSymbol');
+            const ordersTableBody = document.getElementById('ordersTableBody');
+            const ordersStatus = document.getElementById('ordersStatus');
+
+            // Show the orders section
+            ordersSection.style.display = 'block';
+            ordersSymbol.textContent = symbol;
+            ordersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">Carregando ordens...</td></tr>';
+            ordersStatus.textContent = '';
+
+            try {
+                const selectedDate = exposureDate.value;
+                const url = new URL('http://localhost:5002/orders');
+                url.searchParams.append('symbol', symbol);
+                url.searchParams.append('tradeDate', selectedDate);
+
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    ordersStatus.textContent = '⚠️ Não foi possível carregar as ordens';
+                    return;
+                }
+
+                const data = await response.json();
+                const orders = data.orders || [];
+
+                if (orders.length === 0) {
+                    ordersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">Nenhuma ordem encontrada para este símbolo</td></tr>';
+                    ordersStatus.textContent = '';
+                    return;
+                }
+
+                const rows = orders.map(order => {
+                    const sideText = order.side === '1' ? 'Compra' : 'Venda';
+                    const statusText = order.status === 'ACCEPTED' ? 'Aceita' : order.status === 'REJECTED' ? 'Rejeitada' : order.status;
+                    const createdAt = new Date(order.createdAt).toLocaleString('pt-BR');
+
+                    return `
+                        <tr>
+                            <td>${order.clOrdId}</td>
+                            <td>${sideText}</td>
+                            <td>${order.quantity.toLocaleString('pt-BR')}</td>
+                            <td>${order.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                            <td>${statusText}</td>
+                            <td>${createdAt}</td>
+                        </tr>
+                    `;
+                });
+
+                ordersTableBody.innerHTML = rows.join('');
+                ordersStatus.textContent = `✓ ${orders.length} ordem(ns) encontrada(s)`;
+            } catch (error) {
+                ordersStatus.textContent = '⚠️ Erro ao buscar ordens: ' + error.message;
+            }
+        }
     </script></body>
 </html>

@@ -55,3 +55,47 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# IDE-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# SQLite Database files
+*.db
+*.db-shm
+*.db-wal
+
+# FIX Protocol logs and session files
+log/
+store/
+FIX.*.body
+FIX.*.header
+FIX.*.seqnums
+FIX.*.session
+
+# Local environment and configuration
+appsettings.Development.*.json
+.env.local
+.env.*.local
+
+# Node modules (if frontend dependencies exist)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# SSL/TLS certificates for development
+*.pfx
+*.pem
+*.key
+*.crt
+
+# OS-specific
+.DS_Store
+Thumbs.db
