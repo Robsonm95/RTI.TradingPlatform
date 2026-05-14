@@ -51,6 +51,6 @@ public class FixApplication : MessageCracker, IApplication
         QuickFix.FIX44.NewOrderSingle order,
         SessionID sessionID)
     {
-        _processor.Process(order, sessionID);
+        _processor.ProcessAsync(order, sessionID).Wait();
     }
 }
