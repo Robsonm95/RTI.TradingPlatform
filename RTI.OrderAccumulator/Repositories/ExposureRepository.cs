@@ -46,4 +46,59 @@ public class ExposureRepository : IExposureRepository
         }
         await db.SaveChangesAsync();
     }
+
+    public async Task<(bool accepted, decimal newExposure)> ValidateAndUpdateExposureAsync(
+        string symbol,
+        DateOnly tradeDate,
+        decimal orderValue,
+        bool isBuy,
+        decimal maxExposure)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        using var transaction = await db.Database.BeginTransactionAsync();
+        
+        try
+        {
+            // Lock row com SERIALIZABLE isolation para evitar race conditions
+            var existing = await db.Exposures
+                .FromSql($"SELECT * FROM \"Exposures\" WHERE \"Symbol\" = {symbol} AND \"TradeDate\" = {tradeDate}")
+                .FirstOrDefaultAsync();
+
+            var currentExposure = existing?.Exposure ?? 0m;
+            var newExposure = isBuy ? currentExposure + orderValue : currentExposure - orderValue;
+            var accepted = Math.Abs(newExposure) <= maxExposure;
+
+            if (accepted)
+            {
+                if (existing != null)
+                {
+                    existing.Exposure = newExposure;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    db.Exposures.Add(new ExposureEntity
+                    {
+                        Symbol = symbol,
+                        TradeDate = tradeDate,
+                        Exposure = newExposure,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return (true, newExposure);
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+                return (false, currentExposure);
+            }
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
 }

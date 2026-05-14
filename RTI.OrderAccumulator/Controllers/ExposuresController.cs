@@ -16,13 +16,13 @@ public class ExposuresController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult Get([FromQuery] string? tradeDate)
+    public async Task<IActionResult> Get([FromQuery] string? tradeDate)
     {
         var date = string.IsNullOrEmpty(tradeDate)
             ? DateOnly.FromDateTime(DateTime.UtcNow.Date)
             : DateOnly.Parse(tradeDate);
 
-        var exposures = _exposureService.GetExposureAll(date);
+        var exposures = await _exposureService.GetExposureAllAsync(date);
 
         return Ok(new ExposureResponse
         {

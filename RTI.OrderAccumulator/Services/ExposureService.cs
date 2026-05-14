@@ -18,30 +18,31 @@ public class ExposureService
         _orderRepository = orderRepository;
     }
 
-    public decimal GetExposure(string symbol)
+    public async Task<decimal> GetExposureAsync(string symbol)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        return _exposureRepository.GetExposureAsync(symbol, today).Result;
+        return await _exposureRepository.GetExposureAsync(symbol, today);
     }
 
-    public Dictionary<string, decimal> GetExposureAll(DateOnly? tradeDate = null)
+    public async Task<Dictionary<string, decimal>> GetExposureAllAsync(DateOnly? tradeDate = null)
     {
         var date = tradeDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        return _exposureRepository.GetAllExposuresAsync(date).Result;
+        return await _exposureRepository.GetAllExposuresAsync(date);
     }
 
-    public bool CanAccept(
+    public async Task<bool> CanAcceptAsync(
         string symbol,
         OrderSide side,
         decimal orderValue)
     {
-        var currentExposure = GetExposure(symbol);
-
-        var newExposure = side == OrderSide.Buy
-            ? currentExposure + orderValue
-            : currentExposure - orderValue;
-
-        return Math.Abs(newExposure) <= ExposureLimits.MaxExposure;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var (accepted, _) = await _exposureRepository.ValidateAndUpdateExposureAsync(
+            symbol,
+            today,
+            orderValue,
+            side == OrderSide.Buy,
+            ExposureLimits.MaxExposure);
+        return accepted;
     }
 
     public async Task<List<OrderEntity>> GetOrdersBySymbolAsync(string symbol, DateOnly tradeDate)
@@ -56,22 +57,10 @@ public class ExposureService
         char side,
         int quantity,
         decimal price,
-        string status,
-        bool accepted)
+        string status)
     {
         var tradeDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
         var now = DateTime.UtcNow;
-
-        if (accepted)
-        {
-            var orderValue = quantity * price;
-            var currentExposure = await _exposureRepository.GetExposureAsync(symbol, tradeDate);
-            var updatedExposure = side == Side.BUY
-                ? currentExposure + orderValue
-                : currentExposure - orderValue;
-
-            await _exposureRepository.UpdateExposureAsync(symbol, tradeDate, updatedExposure);
-        }
 
         var orderEntity = new OrderEntity
         {
@@ -87,7 +76,7 @@ public class ExposureService
 
         await _orderRepository.AddOrderAsync(orderEntity);
 
-        if (accepted)
+        if (status == "ACCEPTED")
         {
             var exposureValue = await _exposureRepository.GetExposureAsync(symbol, tradeDate);
             Console.WriteLine($"EXPOSURE [{symbol}] = {exposureValue:N2}");

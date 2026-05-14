@@ -41,7 +41,7 @@ public class OrderProcessor
             quantity * price;
 
         var accepted =
-            _exposureService.CanAccept(
+            await _exposureService.CanAcceptAsync(
                 symbol,
                 side,
                 orderValue);
@@ -52,8 +52,7 @@ public class OrderProcessor
             sideValue,
             (int)quantity,
             price,
-            accepted ? "ACCEPTED" : "REJECTED",
-            accepted);
+            accepted ? "ACCEPTED" : "REJECTED");
 
         ExecutionReport report = accepted
             ? ExecutionReportFactory.CreateAccepted(

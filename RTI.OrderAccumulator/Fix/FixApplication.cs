@@ -51,6 +51,8 @@ public class FixApplication : MessageCracker, IApplication
         QuickFix.FIX44.NewOrderSingle order,
         SessionID sessionID)
     {
-        _processor.ProcessAsync(order, sessionID).Wait();
+        // Fire and forget to avoid blocking the FIX processing thread
+        // Use ConfigureAwait(false) to prevent deadlocks
+        _ = _processor.ProcessAsync(order, sessionID).ConfigureAwait(false);
     }
 }
