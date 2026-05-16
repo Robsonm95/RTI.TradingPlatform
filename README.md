@@ -1,4 +1,4 @@
-# 🚀 RTI.TradingPlatform
+# RTI.TradingPlatform
 
 Uma plataforma de simulação de ordens de trading utilizando o protocolo **FIX 4.4** com **QuickFIX/N**.
 
@@ -9,7 +9,7 @@ O projeto é composto por duas aplicações principais:
 
 ---
 
-## 🎯 Sobre o Projeto
+## Sobre o Projeto
 
 Este sistema simula um fluxo real de trading onde:
 
@@ -20,7 +20,7 @@ Este sistema simula um fluxo real de trading onde:
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 | Projeto                | Função                                          | Tecnologia                  |
 |------------------------|-------------------------------------------------|-----------------------------|
@@ -30,7 +30,7 @@ Este sistema simula um fluxo real de trading onde:
 
 ---
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 ### OrderGenerator
 - Interface web simples e intuitiva
@@ -68,18 +68,18 @@ A plataforma **quebra a exposição por dia de negociação** (TradeDate). Isso 
 
 ### Implementação
 
-- ✅ Cada ordem registra seu `TradeDate` (data da negociação)
-- ✅ Exposição calculada por `símbolo + data`
-- ✅ Limite (R$ 100M) é verificado **dentro do mesmo dia**
-- ✅ Interface permite consultar exposições de qualquer data
-- ✅ Cada dia tem seu próprio "universo" de exposição
+- Cada ordem registra seu `TradeDate` (data da negociação)
+- Exposição calculada por `símbolo + data`
+- Limite (R$ 100M) é verificado **dentro do mesmo dia**
+- Interface permite consultar exposições de qualquer data
+- Cada dia tem seu próprio "universo" de exposição
 
 **Exemplo:**
 ```
 Dia 2026-05-13: PETR4 tem exposição de R$ 50M
 Dia 2026-05-14: PETR4 começa do zero (limite disponível novamente)
 ```
-### 📋 Drill-down de Ordens
+### Drill-down de Ordens
 
 A interface permite **explorar ordens individuais** por símbolo:
 
@@ -95,7 +95,7 @@ A interface permite **explorar ordens individuais** por símbolo:
 - `GET /orders?symbol=PETR4&tradeDate=YYYY-MM-DD` → Ordens por símbolo/data
 ---
 
-## �🚀 Como Executar
+## Como Executar
 
 ### Pré-requisitos
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
@@ -110,13 +110,40 @@ A interface permite **explorar ordens individuais** por símbolo:
 cd RTI.OrderAccumulator
 dotnet run
 
-- O `OrderAccumulator` usa EF Core com SQLite.
-- O banco local `orderAccumulator.db` é criado automaticamente na primeira execução.
-- Se quiser reiniciar os dados, apague `RTI.OrderAccumulator/orderAccumulator.db` antes de iniciar.
+- O `OrderAccumulator` usa EF Core com PostgreSQL.
+- A connection string padrão está em `RTI.OrderAccumulator/appsettings.json`.
+- Em Docker, o banco PostgreSQL é provisionado automaticamente pelo `docker-compose`.
 
 ### Terminal 2 - OrderGenerator (Cliente)
 cd RTI.OrderGenerator
 dotnet run
+
+## 🐳 Docker
+
+A solução inclui suporte a Docker com PostgreSQL e ambos os serviços.
+
+### Executando com Docker
+No diretório raiz do projeto:
+
+```bash
+docker compose up --build
+```
+
+Isso iniciará:
+
+- `postgres` na porta `5432`
+- `order-accumulator` na porta `5002`
+- `order-generator` na porta `5000`
+
+### Acesso
+- OrderGenerator: `http://localhost:5000`
+- OrderAccumulator API: `http://localhost:5002`
+
+### Parar e remover containers
+
+```bash
+docker compose down
+```
 
 ## Tecnologias Utilizadas
 
@@ -128,8 +155,6 @@ dotnet run
 
 ## Próximos Passos
 
-* Persistência de exposição (SQLite / EF Core) — implementado
 * Dashboard de exposição em tempo real
 * Logging avançado e métricas
 * Testes unitários e de integração
-* Dockerização das aplicações

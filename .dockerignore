@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/*.db
+**/*.sqlite
+**/node_modules/
+**/.vs/
+**/.vscode/
+**/.git/
+*.user
+*.suo
+*.log
+*.pdb
+*.tmp
+**/*.test.csproj
+**/*.Tests/

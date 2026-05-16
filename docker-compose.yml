@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: rti-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orderAccumulator
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  order-accumulator:
+    build:
+      context: .
+      dockerfile: RTI.OrderAccumulator/Dockerfile
+    container_name: rti-order-accumulator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5002
+      - ConnectionStrings__TradingDatabase=Host=postgres;Port=5432;Database=orderAccumulator;Username=postgres;Password=postgres
+    ports:
+      - "5002:5002"
+      - "5001:5001"
+
+  order-generator:
+    build:
+      context: .
+      dockerfile: RTI.OrderGenerator/Dockerfile
+    container_name: rti-order-generator
+    depends_on:
+      order-accumulator:
+        condition: service_started
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      - FIX_CONNECT_HOST=order-accumulator
+      - FIX_CONNECT_PORT=5001
+    ports:
+      - "5000:5000"
+    links:
+      - order-accumulator
+
+volumes:
+  postgres-data:

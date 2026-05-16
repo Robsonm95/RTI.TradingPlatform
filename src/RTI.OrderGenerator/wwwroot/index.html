@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 760px;
+            margin: 40px auto;
+            padding: 0 16px;
+            color: #222;
+        }
+        h1 {
+            margin-bottom: 0.25rem;
+        }
+        form {
+            display: grid;
+            gap: 12px;
+            padding: 18px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-weight: 600;
+        }
+        input, select, button {
+            padding: 10px 12px;
+            font-size: 1rem;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            color: white;
+            background: #007bff;
+            border-radius: 6px;
+        }
+        button:hover {
+            background: #0056cc;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 10px;
+            background: #f5f7ff;
+            border: 1px solid #d7def9;
+            min-height: 110px;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #a00;
+        }
+        #exposureSection {
+            margin-top: 30px;
+            padding: 18px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        #exposureSection h2 {
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table th, table td {
+            padding: 12px;
+            text-align: right;
+            border: 1px solid #ddd;
+        }
+        table th {
+            background: #007bff;
+            color: white;
+            font-weight: 600;
+        }
+        table td:first-child, table th:first-child {
+            text-align: left;
+        }
+        table tbody tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .exposure-value {
+            font-weight: 600;
+            font-family: monospace;
+        }
+        .exposure-warning {
+            color: #d9534f;
+        }
+        .exposure-ok {
+            color: #5cb85c;
+        }
+        .exposure-row:hover {
+            background-color: #f0f8ff;
+        }
+        #updateStatus {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Order Generator</h1>
+    <p>Preencha os dados abaixo e envie para criar uma nova ordem FIX.</p>
+    <form id="orderForm">
+        <label>
+            Símbolo
+            <select name="symbol" required>
+                <option value="PETR4">PETR4</option>
+                <option value="VALE3">VALE3</option>
+                <option value="VIIA4">VIIA4</option>
+            </select>
+        </label>
+
+        <label>
+            Lado
+            <select name="side" required>
+                <option value="Buy">Compra</option>
+                <option value="Sell">Venda</option>
+            </select>
+        </label>
+
+        <label>
+            Quantidade
+            <input type="number" name="quantity" min="1" max="99999" step="1" required />
+        </label>
+
+        <label>
+            Preço
+            <input type="number" name="price" min="0.01" max="999.99" step="0.01" required />
+        </label>
+
+        <button type="submit">Enviar ordem</button>
+    </form>
+
+    <div id="response"></div>
+
+    <div id="exposureSection">
+        <h2>Exposições Financeiras</h2>
+        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <strong>Data:</strong>
+            <input type="date" id="exposureDate" style="padding: 8px 12px; font-size: 1rem; flex: 0 1 auto;" />
+        </label>
+        <table>
+            <thead>
+                <tr>
+                    <th>Símbolo</th>
+                    <th>Exposição (R$)</th>
+                    <th>% do Limite</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="exposureTableBody">
+                <tr>
+                    <td colspan="4" style="text-align: center; color: #999;">Carregando...</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Exposições por símbolo (Limite: R$ 100.000.000)</p>
+        <div id="updateStatus"></div>
+
+        <!-- Orders table (hidden by default) -->
+        <div id="ordersSection" style="display: none; margin-top: 30px; padding: 18px; border: 1px solid #ddd; border-radius: 10px; background: #fafafa;">
+            <h3>Ordens do Símbolo: <span id="ordersSymbol"></span></h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ClOrdId</th>
+                        <th>Lado</th>
+                        <th>Quantidade</th>
+                        <th>Preço</th>
+                        <th>Status</th>
+                        <th>Data/Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">Carregando ordens...</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="ordersStatus" style="font-size: 0.9rem; color: #666; margin-top: 8px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('orderForm');
+        const responseBox = document.getElementById('response');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+            const payload = {
+                symbol: formData.get('symbol'),
+                side: formData.get('side'),
+                quantity: parseInt(formData.get('quantity'), 10),
+                price: parseFloat(formData.get('price'))
+            };
+
+            responseBox.textContent = 'Enviando...';
+
+            try {
+                const response = await fetch('http://localhost:5001/orders', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });    
+                
+                const result = await fetch('/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const body = await result.json();
+
+                if (!result.ok) {
+                    responseBox.innerHTML = '<strong class="error">Erro:</strong> ' + (body.message || JSON.stringify(body));
+                    return;
+                }
+
+                responseBox.innerHTML = `Status: ${body.status || 'OK'}\nSuccess: ${body.success}\nMensagem: ${body.message || 'Sem mensagem'}\nClOrdId: ${body.clOrdId}`;
+            } catch (error) {
+                responseBox.innerHTML = '<strong class="error">Falha ao conectar:</strong> ' + error;
+            }
+        });
+
+        // Exposures table update
+        const exposureTableBody = document.getElementById('exposureTableBody');
+        const updateStatus = document.getElementById('updateStatus');
+        const exposureDate = document.getElementById('exposureDate');
+        const MAX_EXPOSURE = 100_000_000;
+
+        // Set today's date as default
+        const today = new Date().toISOString().split('T')[0];
+        exposureDate.value = today;
+
+        // Update exposures when date changes
+        exposureDate.addEventListener('change', updateExposures);
+
+        async function updateExposures() {
+            try {
+                const selectedDate = exposureDate.value;
+                const url = new URL('http://localhost:5002/exposures');
+                url.searchParams.append('tradeDate', selectedDate);
+
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    updateStatus.textContent = '⚠️ Não foi possível conectar ao OrderAccumulator';
+                    return;
+                }
+
+                const data = await response.json();
+                const exposures = data.exposures || {};
+
+                const rows = Object.entries(exposures).map(([symbol, value]) => {
+                    const percentage = Math.abs(value) / MAX_EXPOSURE * 100;
+                    const isWarning = percentage > 80;
+                    const statusClass = isWarning ? 'exposure-warning' : 'exposure-ok';
+                    const statusText = isWarning ? '⚠️ Alto' : '✓ Okay';
+
+                    return `
+                        <tr data-symbol="${symbol}" style="cursor: pointer;" class="exposure-row">
+                            <td>${symbol}</td>
+                            <td class="exposure-value">${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                            <td>${percentage.toFixed(2)}%</td>
+                            <td class="${statusClass}">${statusText}</td>
+                        </tr>
+                    `;
+                });
+
+                exposureTableBody.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="4" style="text-align: center; color: #999;">Nenhum dado disponível</td></tr>';
+                updateStatus.textContent = '✓ Atualizado em ' + new Date().toLocaleTimeString('pt-BR');
+            } catch (error) {
+                updateStatus.textContent = '⚠️ Erro ao buscar exposições: ' + error.message;
+            }
+        }
+
+        // Initial load
+        updateExposures();
+
+        // Update every 2 seconds
+        setInterval(updateExposures, 2000);
+
+        // Handle exposure row clicks
+        exposureTableBody.addEventListener('click', (event) => {
+            const row = event.target.closest('.exposure-row');
+            if (row) {
+                const symbol = row.getAttribute('data-symbol');
+                if (symbol) {
+                    showOrdersForSymbol(symbol);
+                }
+            }
+        });
+
+        async function showOrdersForSymbol(symbol) {
+            const ordersSection = document.getElementById('ordersSection');
+            const ordersSymbol = document.getElementById('ordersSymbol');
+            const ordersTableBody = document.getElementById('ordersTableBody');
+            const ordersStatus = document.getElementById('ordersStatus');
+
+            // Show the orders section
+            ordersSection.style.display = 'block';
+            ordersSymbol.textContent = symbol;
+            ordersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">Carregando ordens...</td></tr>';
+            ordersStatus.textContent = '';
+
+            try {
+                const selectedDate = exposureDate.value;
+                const url = new URL('http://localhost:5002/orders');
+                url.searchParams.append('symbol', symbol);
+                url.searchParams.append('tradeDate', selectedDate);
+
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    ordersStatus.textContent = '⚠️ Não foi possível carregar as ordens';
+                    return;
+                }
+
+                const data = await response.json();
+                const orders = data.orders || [];
+
+                if (orders.length === 0) {
+                    ordersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">Nenhuma ordem encontrada para este símbolo</td></tr>';
+                    ordersStatus.textContent = '';
+                    return;
+                }
+
+                const rows = orders.map(order => {
+                    const sideText = order.side === '1' ? 'Compra' : 'Venda';
+                    const statusText = order.status === 'ACCEPTED' ? 'Aceita' : order.status === 'REJECTED' ? 'Rejeitada' : order.status;
+                    const createdAt = new Date(order.createdAt).toLocaleString('pt-BR');
+
+                    return `
+                        <tr>
+                            <td>${order.clOrdId}</td>
+                            <td>${sideText}</td>
+                            <td>${order.quantity.toLocaleString('pt-BR')}</td>
+                            <td>${order.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                            <td>${statusText}</td>
+                            <td>${createdAt}</td>
+                        </tr>
+                    `;
+                });
+
+                ordersTableBody.innerHTML = rows.join('');
+                ordersStatus.textContent = `✓ ${orders.length} ordem(ns) encontrada(s)`;
+            } catch (error) {
+                ordersStatus.textContent = '⚠️ Erro ao buscar ordens: ' + error.message;
+            }
+        }
+    </script></body>
+</html>

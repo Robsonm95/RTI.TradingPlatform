@@ -1,5 +1,12 @@
 <Solution>
-  <Project Path="RTI.OrderAccumulator/RTI.OrderAccumulator.csproj" />
-  <Project Path="RTI.OrderGenerator/RTI.OrderGenerator.csproj" />
-  <Project Path="RTI.Shared/RTI.Shared.csproj" />
+  <Folder Name="/tests/" >
+    <Project Path="tests/RTI.OrderAccumulator.Tests/RTI.OrderAccumulator.Tests.csproj" />
+    <Project Path="tests/RTI.OrderGenerator.Tests/RTI.OrderGenerator.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/" >
+    <Project Path="src/RTI.OrderAccumulator/RTI.OrderAccumulator.csproj" />
+    <Project Path="src/RTI.OrderGenerator/RTI.OrderGenerator.csproj" />
+    <Project Path="src/RTI.Shared/RTI.Shared.csproj" />
+  </Folder>
+  
 </Solution>
