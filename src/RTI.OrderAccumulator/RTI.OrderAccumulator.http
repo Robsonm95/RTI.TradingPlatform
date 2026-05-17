@@ -1,0 +1,6 @@
+@RTI.OrderAccumulator_HostAddress = http://localhost:5002
+
+GET {{RTI.OrderAccumulator_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

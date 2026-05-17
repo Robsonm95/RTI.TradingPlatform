@@ -1,19 +1,22 @@
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY RTI.OrderGenerator/RTI.OrderGenerator.csproj RTI.OrderGenerator/
-COPY RTI.Shared/RTI.Shared.csproj RTI.Shared/
-RUN dotnet restore RTI.OrderGenerator/RTI.OrderGenerator.csproj
+COPY ["src/RTI.Shared/RTI.Shared.csproj", "src/RTI.Shared/"]
+COPY ["src/RTI.OrderGenerator/RTI.OrderGenerator.csproj", "src/RTI.OrderGenerator/"]
+
+RUN dotnet restore "src/RTI.OrderGenerator/RTI.OrderGenerator.csproj"
 
 COPY . .
-WORKDIR /src/RTI.OrderGenerator
-RUN dotnet publish -c Release -o /app --no-restore
+WORKDIR "/src/src/RTI.OrderGenerator"
+RUN dotnet publish "RTI.OrderGenerator.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
-COPY --from=build /app .
+COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:5000
-EXPOSE 5000
+EXPOSE 5001
+ENV ASPNETCORE_URLS=http://+:5001
 
 ENTRYPOINT ["dotnet", "RTI.OrderGenerator.dll"]

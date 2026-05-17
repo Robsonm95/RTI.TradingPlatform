@@ -18,41 +18,40 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 5s
 
   order-accumulator:
     build:
       context: .
-      dockerfile: RTI.OrderAccumulator/Dockerfile
+      dockerfile: src/RTI.OrderAccumulator/Dockerfile
     container_name: rti-order-accumulator
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:5002
+      - ASPNETCORE_URLS=http://*:5002
+      - FIX_PORT=5003
       - ConnectionStrings__TradingDatabase=Host=postgres;Port=5432;Database=orderAccumulator;Username=postgres;Password=postgres
     ports:
-      - "5002:5002"
-      - "5001:5001"
+      - "5002:5002"   # API Web
+      - "5003:5003"   # FIX
+    restart: unless-stopped
 
   order-generator:
     build:
       context: .
-      dockerfile: RTI.OrderGenerator/Dockerfile
+      dockerfile: src/RTI.OrderGenerator/Dockerfile
     container_name: rti-order-generator
     depends_on:
-      order-accumulator:
-        condition: service_started
+      - order-accumulator
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_URLS=http://+:5001
       - FIX_CONNECT_HOST=order-accumulator
-      - FIX_CONNECT_PORT=5001
+      - FIX_CONNECT_PORT=5003
     ports:
-      - "5000:5000"
-    links:
-      - order-accumulator
+      - "5001:5001"
+    restart: unless-stopped
 
 volumes:
   postgres-data:

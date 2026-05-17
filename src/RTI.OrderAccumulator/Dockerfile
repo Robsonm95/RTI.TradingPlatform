@@ -1,20 +1,25 @@
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY RTI.OrderAccumulator/RTI.OrderAccumulator.csproj RTI.OrderAccumulator/
-COPY RTI.Shared/RTI.Shared.csproj RTI.Shared/
-RUN dotnet restore RTI.OrderAccumulator/RTI.OrderAccumulator.csproj
+COPY ["src/RTI.Shared/RTI.Shared.csproj", "src/RTI.Shared/"]
+COPY ["src/RTI.OrderAccumulator/RTI.OrderAccumulator.csproj", "src/RTI.OrderAccumulator/"]
+
+RUN dotnet restore "src/RTI.OrderAccumulator/RTI.OrderAccumulator.csproj"
 
 COPY . .
-WORKDIR /src/RTI.OrderAccumulator
-RUN dotnet publish -c Release -o /app --no-restore
+WORKDIR "/src/src/RTI.OrderAccumulator"
+RUN dotnet publish "RTI.OrderAccumulator.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
-COPY --from=build /app .
+COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:5002;https://+:5003
 EXPOSE 5002
 EXPOSE 5003
+
+ENV ASPNETCORE_URLS=http://*:5002
+ENV ASPNETCORE_HTTP_PORTS=5002
 
 ENTRYPOINT ["dotnet", "RTI.OrderAccumulator.dll"]

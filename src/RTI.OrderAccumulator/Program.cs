@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RTI.OrderAccumulator.Data;
 using RTI.OrderAccumulator.Fix;
 using RTI.OrderAccumulator.Repositories;
