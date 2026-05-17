@@ -133,11 +133,12 @@ Isso iniciará:
 
 - `postgres` na porta `5432`
 - `order-accumulator` na porta `5002`
-- `order-generator` na porta `5000`
+- `order-generator` na porta `5001`
 
 ### Acesso
-- OrderGenerator: `http://localhost:5000`
-- OrderAccumulator API: `http://localhost:5002`
+- OrderGenerator: `http://localhost:5001`
+- OrderGenerator API: `http://localhost:5001/swagger/index.html`
+- OrderAccumulator API: `http://localhost:5002/swagger/index.html`
 
 ### Parar e remover containers
 
